@@ -6,7 +6,7 @@
       if (key === "style" && typeof attributes[key] === "object") {
         Object.assign(element.style, attributes[key]);
       } else if (key === "checked") {
-        element.checked = attributes[key]; // ← ключевой момент
+        element.checked = attributes[key];
       } else if (key.startsWith("on") && typeof attributes[key] === "function") {
         element.addEventListener(key.slice(2).toLowerCase(), attributes[key]);
       } else {
@@ -57,14 +57,78 @@ class Component {
   }
 
   update() {
-    const newNode = this.render();
-    if (this._domNode && this._domNode.parentNode) {
-      this._domNode.parentNode.replaceChild(newNode, this._domNode);
+  const oldNode = this._domNode;
+  const active = document.activeElement;
+  const selectionStart = active?.selectionStart;
+  const selectionEnd = active?.selectionEnd;
+
+  const newNode = this.render();
+
+  if (oldNode && oldNode.parentNode) {
+    oldNode.parentNode.replaceChild(newNode, oldNode);
+  }
+
+  this._domNode = newNode;
+
+  if (active?.id === "new-todo") {
+    const input = this._domNode.querySelector("#new-todo");
+    if (input) {
+      input.focus();
+      if (selectionStart !== null && selectionEnd !== null) {
+        input.setSelectionRange(selectionStart, selectionEnd);
+      }
     }
-    this._domNode = newNode;
   }
 }
+}
 
+class Task extends Component {
+  constructor(todo, onToggle, onDelete, resetConfirmState) {
+    super();
+    this.todo = todo;
+    this.onToggle = onToggle;
+    this.onDelete = onDelete;
+    this.resetConfirmState = resetConfirmState;
+    this.state = { confirmDelete: false };
+  }
+
+  handleDelete = () => {
+    if (!this.state.confirmDelete) {
+      this.resetConfirmState();
+      this.setState({ confirmDelete: true });
+    } else {
+      this.onDelete();
+    }
+  }
+
+  render() {
+    return createElement("li", {}, [
+      createElement("input", {
+        type: "checkbox",
+        checked: this.todo.completed
+      }, null, {
+        change: () => this.onToggle()
+      }),
+      createElement("label", {
+        style: {
+          color: this.todo.completed ? "gray" : "black",
+          marginLeft: "5px",
+          marginRight: "10px",
+        }
+      }, this.todo.text),
+      createElement("button", {
+        style: {
+          color: this.state.confirmDelete ? "white" : "black",
+          backgroundColor: this.state.confirmDelete ? "red" : "transparent",
+          border: "1px solid gray",
+          cursor: "pointer"
+        }
+      }, "🗑️", {
+        click: this.handleDelete
+      }),
+    ]);
+  }
+}
 
 
 class TodoList extends Component {
@@ -79,6 +143,7 @@ class TodoList extends Component {
       ],
     };
     this.nextId = 4;
+    this._taskComponents = [];
   }
 
   toggleTodo(id) {
@@ -116,33 +181,26 @@ class TodoList extends Component {
     });
   }
 
-  renderTodoItem(todo) {
-    return createElement("li", {}, [
-      createElement("input", {
-        type: "checkbox",
-        "data-id": todo.id,
-        checked: todo.completed
-      }, null, {
-        change: () => this.toggleTodo(todo.id)
-      }),
-      createElement(
-        "label",
-        {
-          style: {
-            color: todo.completed ? "gray" : "black",
-            marginLeft: "5px",
-            marginRight: "10px",
-          },
-        },
-        todo.text
-      ),
-      createElement("button", { "data-id": todo.id }, "🗑️", {
-        click: () => this.deleteTodo(todo.id)
-      }),
-    ]);
-  }
-
   render() {
+    this._taskComponents = [];
+
+    const todoItems = this.state.todos.map(todo => {
+      const taskComponent = new Task(
+        todo,
+        () => this.toggleTodo(todo.id),
+        () => this.deleteTodo(todo.id),
+        () => {
+          this._taskComponents.forEach(comp => {
+            if (comp.todo.id !== todo.id) {
+              comp.setState({ confirmDelete: false });
+            }
+          });
+        }
+      );
+      this._taskComponents.push(taskComponent);
+      return taskComponent.getDomNode();
+    });
+
     return createElement("div", { class: "todo-list" }, [
       createElement("h1", {}, "TODO List"),
       createElement("div", { class: "add-todo" }, [
@@ -158,9 +216,7 @@ class TodoList extends Component {
           click: this.onAddTask
         })
       ]),
-      createElement("ul", { id: "todos" },
-        this.state.todos.map(todo => this.renderTodoItem(todo))
-      ),
+      createElement("ul", { id: "todos" }, todoItems),
     ]);
   }
 }
