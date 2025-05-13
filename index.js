@@ -38,15 +38,16 @@
   return element;
 }
 
-
 class Component {
   constructor() {
     this.state = {};
   }
 
-  setState(newState) {
+  setState(newState, callback) {
     this.state = { ...this.state, ...newState };
+    localStorage.setItem("todoListState", JSON.stringify(this.state));
     this.update();
+    if (callback) callback();
   }
 
   getDomNode() {
@@ -57,29 +58,29 @@ class Component {
   }
 
   update() {
-  const oldNode = this._domNode;
-  const active = document.activeElement;
-  const selectionStart = active?.selectionStart;
-  const selectionEnd = active?.selectionEnd;
+    const oldNode = this._domNode;
+    const active = document.activeElement;
+    const selectionStart = active?.selectionStart;
+    const selectionEnd = active?.selectionEnd;
 
-  const newNode = this.render();
+    const newNode = this.render();
 
-  if (oldNode && oldNode.parentNode) {
-    oldNode.parentNode.replaceChild(newNode, oldNode);
-  }
+    if (oldNode && oldNode.parentNode) {
+      oldNode.parentNode.replaceChild(newNode, oldNode);
+    }
 
-  this._domNode = newNode;
+    this._domNode = newNode;
 
-  if (active?.id === "new-todo") {
-    const input = this._domNode.querySelector("#new-todo");
-    if (input) {
-      input.focus();
-      if (selectionStart !== null && selectionEnd !== null) {
-        input.setSelectionRange(selectionStart, selectionEnd);
+    if (active?.id === "new-todo") {
+      const input = this._domNode.querySelector("#new-todo");
+      if (input) {
+        input.focus();
+        if (selectionStart !== null && selectionEnd !== null) {
+          input.setSelectionRange(selectionStart, selectionEnd);
+        }
       }
     }
   }
-}
 }
 
 class Task extends Component {
@@ -130,11 +131,13 @@ class Task extends Component {
   }
 }
 
-
 class TodoList extends Component {
   constructor() {
     super();
-    this.state = {
+
+    const savedState = JSON.parse(localStorage.getItem("todoListState"));
+    
+    this.state = savedState || {
       inputText: '',
       todos: [
         { id: 1, text: "Сделать домашку", completed: false },
@@ -142,7 +145,8 @@ class TodoList extends Component {
         { id: 3, text: "Пойти домой", completed: false },
       ],
     };
-    this.nextId = 4;
+
+    this.nextId = this.state.todos.length > 0 ? Math.max(...this.state.todos.map(todo => todo.id)) + 1 : 4;
     this._taskComponents = [];
   }
 
@@ -150,14 +154,14 @@ class TodoList extends Component {
     const todo = this.state.todos.find((t) => t.id === id);
     if (todo) {
       todo.completed = !todo.completed;
-      this.update();
+      this.updateState();
     }
   }
 
   deleteTodo(id) {
     this.setState({
       todos: this.state.todos.filter((t) => t.id !== id)
-    });
+    }, this.updateState);
   }
 
   onAddInputChange = (e) => {
@@ -178,7 +182,12 @@ class TodoList extends Component {
         }
       ],
       inputText: ''
-    });
+    }, this.updateState);
+  }
+
+  updateState = () => {
+    localStorage.setItem("todoListState", JSON.stringify(this.state));
+    this.update();
   }
 
   render() {
