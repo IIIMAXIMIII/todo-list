@@ -49,15 +49,6 @@ class Component {
     this.update();
   }
 
-  update() {
-    const oldNode = this._domNode;
-    const newNode = this.render();
-    if (oldNode && oldNode.parentNode) {
-      oldNode.parentNode.replaceChild(newNode, oldNode);
-    }
-    this._domNode = newNode;
-  }
-
   getDomNode() {
     if (!this._domNode) {
       this._domNode = this.render();
@@ -67,10 +58,13 @@ class Component {
 
   update() {
     const newNode = this.render();
-    this._domNode.replaceWith(newNode);
+    if (this._domNode && this._domNode.parentNode) {
+      this._domNode.parentNode.replaceChild(newNode, this._domNode);
+    }
     this._domNode = newNode;
   }
 }
+
 
 
 class TodoList extends Component {
@@ -96,37 +90,8 @@ class TodoList extends Component {
   }
 
   deleteTodo(id) {
-    this.state.todos = this.state.todos.filter((t) => t.id !== id);
-    this.update();
-  }
-
-  addTodo(text) {
-    const trimmed = text.trim();
-    if (trimmed) {
-      this.state.todos.push({ id: this.nextId++, text: trimmed, completed: false });
-      this.update();
-    }
-  }
-
-  bindEvents(container) {
-    container.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
-      checkbox.addEventListener("change", (e) => {
-        const id = parseInt(e.target.getAttribute("data-id"));
-        this.toggleTodo(id);
-      });
-    });
-
-    container.querySelectorAll("button[data-id]").forEach((button) => {
-      button.addEventListener("click", (e) => {
-        const id = parseInt(e.target.getAttribute("data-id"));
-        this.deleteTodo(id);
-      });
-    });
-
-    container.querySelector("#add-btn").addEventListener("click", () => {
-      const input = container.querySelector("#new-todo");
-      this.addTodo(input.value);
-      input.value = "";
+    this.setState({
+      todos: this.state.todos.filter((t) => t.id !== id)
     });
   }
 
@@ -135,14 +100,15 @@ class TodoList extends Component {
   }
 
   onAddTask = () => {
-    if (!this.state.inputText.trim()) return;
+    const trimmed = this.state.inputText.trim();
+    if (!trimmed) return;
 
     this.setState({
       todos: [
         ...this.state.todos,
         {
-          id: Date.now(),
-          text: this.state.inputText,
+          id: this.nextId++,
+          text: trimmed,
           completed: false
         }
       ],
@@ -155,7 +121,9 @@ class TodoList extends Component {
       createElement("input", {
         type: "checkbox",
         "data-id": todo.id,
-        checked: todo.completed,
+        checked: todo.completed
+      }, null, {
+        change: () => this.toggleTodo(todo.id)
       }),
       createElement(
         "label",
@@ -168,12 +136,14 @@ class TodoList extends Component {
         },
         todo.text
       ),
-      createElement("button", { "data-id": todo.id }, "🗑️"),
+      createElement("button", { "data-id": todo.id }, "🗑️", {
+        click: () => this.deleteTodo(todo.id)
+      }),
     ]);
   }
 
   render() {
-    const container = createElement("div", { class: "todo-list" }, [
+    return createElement("div", { class: "todo-list" }, [
       createElement("h1", {}, "TODO List"),
       createElement("div", { class: "add-todo" }, [
         createElement("input", {
@@ -189,12 +159,9 @@ class TodoList extends Component {
         })
       ]),
       createElement("ul", { id: "todos" },
-          this.state.todos.map(todo => this.renderTodoItem(todo))
+        this.state.todos.map(todo => this.renderTodoItem(todo))
       ),
     ]);
-
-    setTimeout(() => this.bindEvents(container), 0);
-    return container;
   }
 }
 
