@@ -35,6 +35,34 @@ class Component {
 }
 
 class TodoList extends Component {
+  constructor() {
+    super();
+    this.state = {
+      todos: [
+        { id: 1, text: "Сделать домашку", completed: false },
+        { id: 2, text: "Сделать практику", completed: false },
+        { id: 3, text: "Пойти домой", completed: false }
+      ]
+    };
+  }
+
+  renderTodoItem(todo) {
+    const checkboxAttributes = {
+      type: "checkbox",
+      "data-id": todo.id
+    };
+    
+    if (todo.completed) {
+      checkboxAttributes.checked = true;
+    }
+
+    return createElement("li", {}, [
+      createElement("input", checkboxAttributes),
+      createElement("label", {}, todo.text),
+      createElement("button", { "data-id": todo.id }, "🗑️")
+    ]);
+  }
+
   render() {
     return createElement("div", { class: "todo-list" }, [
       createElement("h1", {}, "TODO List"),
@@ -46,23 +74,9 @@ class TodoList extends Component {
         }),
         createElement("button", { id: "add-btn" }, "+"),
       ]),
-      createElement("ul", { id: "todos" }, [
-        createElement("li", {}, [
-          createElement("input", { type: "checkbox" }),
-          createElement("label", {}, "Сделать домашку"),
-          createElement("button", {}, "🗑️")
-        ]),
-        createElement("li", {}, [
-          createElement("input", { type: "checkbox" }),
-          createElement("label", {}, "Сделать практику"),
-          createElement("button", {}, "🗑️")
-        ]),
-        createElement("li", {}, [
-          createElement("input", { type: "checkbox" }),
-          createElement("label", {}, "Пойти домой"),
-          createElement("button", {}, "🗑️")
-        ]),
-      ]),
+      createElement("ul", { id: "todos" }, 
+        this.state.todos.map(todo => this.renderTodoItem(todo))
+      ),
     ]);
   }
 }
