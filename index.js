@@ -90,7 +90,7 @@ class AddTask extends Component {
   }
 
   onAddInputChange = (e) => {
-    this.setState({ inputText: e.target.value });  // Ensure inputText is being set here
+    this.setState({ inputText: e.target.value });
   }
 
   onAddTaskClick = () => {
@@ -98,7 +98,7 @@ class AddTask extends Component {
     if (!trimmed) return;
     console.log(trimmed);
     this.onAddTask(trimmed);
-    this.setState({ inputText: '' });  // Ensure inputText is reset after adding a task
+    this.setState({ inputText: '' });
   }
 
   render() {
@@ -107,7 +107,7 @@ class AddTask extends Component {
         id: "new-todo",
         type: "text",
         placeholder: "Задание",
-        value: this.state.inputText || '',  // Add fallback value for inputText
+        value: this.state.inputText || '',
       }, null, {
         input: this.onAddInputChange,
       }),
@@ -175,9 +175,8 @@ class TodoList extends Component {
 
     const savedState = JSON.parse(localStorage.getItem("todoListState"));
 
-    // Ensure inputText is always initialized with a default value
     this.state = savedState && savedState.todos ? savedState : {
-      inputText: '', // Make sure this is initialized
+      inputText: '',
       todos: [
         { id: 1, text: "Сделать домашку", completed: false },
         { id: 2, text: "Сделать практику", completed: false },
