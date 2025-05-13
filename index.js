@@ -83,6 +83,43 @@ class Component {
   }
 }
 
+class AddTask extends Component {
+  constructor(onAddTask) {
+    super();
+    this.onAddTask = onAddTask;
+  }
+
+  onAddInputChange = (e) => {
+    this.setState({ inputText: e.target.value });  // Ensure inputText is being set here
+  }
+
+  onAddTaskClick = () => {
+    const trimmed = this.state.inputText.trim();
+    if (!trimmed) return;
+    console.log(trimmed);
+    this.onAddTask(trimmed);
+    this.setState({ inputText: '' });  // Ensure inputText is reset after adding a task
+  }
+
+  render() {
+    return createElement("div", { class: "add-todo" }, [
+      createElement("input", {
+        id: "new-todo",
+        type: "text",
+        placeholder: "Задание",
+        value: this.state.inputText || '',  // Add fallback value for inputText
+      }, null, {
+        input: this.onAddInputChange,
+      }),
+      createElement("button", { id: "add-btn" }, "+", {
+        click: this.onAddTaskClick,
+      })
+    ]);
+  }
+}
+
+
+
 class Task extends Component {
   constructor(todo, onToggle, onDelete, resetConfirmState) {
     super();
@@ -108,7 +145,7 @@ class Task extends Component {
         type: "checkbox",
         checked: this.todo.completed
       }, null, {
-        change: () => this.onToggle()
+        change: this.onToggle
       }),
       createElement("label", {
         style: {
@@ -131,20 +168,24 @@ class Task extends Component {
   }
 }
 
+
 class TodoList extends Component {
   constructor() {
     super();
 
     const savedState = JSON.parse(localStorage.getItem("todoListState"));
-    
-    this.state = savedState || {
-      inputText: '',
+
+    // Ensure inputText is always initialized with a default value
+    this.state = savedState && savedState.todos ? savedState : {
+      inputText: '', // Make sure this is initialized
       todos: [
         { id: 1, text: "Сделать домашку", completed: false },
         { id: 2, text: "Сделать практику", completed: false },
         { id: 3, text: "Пойти домой", completed: false },
       ],
     };
+
+    this.state.inputText = '';
 
     this.nextId = this.state.todos.length > 0 ? Math.max(...this.state.todos.map(todo => todo.id)) + 1 : 4;
     this._taskComponents = [];
@@ -164,24 +205,16 @@ class TodoList extends Component {
     }, this.updateState);
   }
 
-  onAddInputChange = (e) => {
-    this.setState({ inputText: e.target.value });
-  }
-
-  onAddTask = () => {
-    const trimmed = this.state.inputText.trim();
-    if (!trimmed) return;
-
+  onAddTask = (text) => {
     this.setState({
       todos: [
         ...this.state.todos,
         {
           id: this.nextId++,
-          text: trimmed,
+          text: text,
           completed: false
         }
-      ],
-      inputText: ''
+      ]
     }, this.updateState);
   }
 
@@ -212,23 +245,12 @@ class TodoList extends Component {
 
     return createElement("div", { class: "todo-list" }, [
       createElement("h1", {}, "TODO List"),
-      createElement("div", { class: "add-todo" }, [
-        createElement("input", {
-          id: "new-todo",
-          type: "text",
-          placeholder: "Задание",
-          value: this.state.inputText
-        }, null, {
-          input: this.onAddInputChange
-        }),
-        createElement("button", { id: "add-btn" }, "+", {
-          click: this.onAddTask
-        })
-      ]),
+      new AddTask(this.onAddTask).getDomNode(),
       createElement("ul", { id: "todos" }, todoItems),
     ]);
   }
 }
+
 
 
 document.addEventListener("DOMContentLoaded", () => {
