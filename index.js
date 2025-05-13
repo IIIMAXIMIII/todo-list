@@ -3,7 +3,15 @@
 
   if (attributes) {
     Object.keys(attributes).forEach((key) => {
-      element.setAttribute(key, attributes[key]);
+      if (key === "style" && typeof attributes[key] === "object") {
+        Object.assign(element.style, attributes[key]);
+      } else if (key === "checked") {
+        element.checked = attributes[key]; // ← ключевой момент
+      } else if (key.startsWith("on") && typeof attributes[key] === "function") {
+        element.addEventListener(key.slice(2).toLowerCase(), attributes[key]);
+      } else {
+        element.setAttribute(key, attributes[key]);
+      }
     });
   }
 
@@ -24,15 +32,22 @@
   return element;
 }
 
+
 class Component {
-  constructor() {
-  }
+  constructor() {}
 
   getDomNode() {
     this._domNode = this.render();
     return this._domNode;
   }
+
+  update() {
+    const newNode = this.render();
+    this._domNode.replaceWith(newNode);
+    this._domNode = newNode;
+  }
 }
+
 
 class TodoList extends Component {
   constructor() {
@@ -41,30 +56,79 @@ class TodoList extends Component {
       todos: [
         { id: 1, text: "Сделать домашку", completed: false },
         { id: 2, text: "Сделать практику", completed: false },
-        { id: 3, text: "Пойти домой", completed: false }
-      ]
+        { id: 3, text: "Пойти домой", completed: false },
+      ],
     };
+    this.nextId = 4;
+  }
+
+  toggleTodo(id) {
+    const todo = this.state.todos.find((t) => t.id === id);
+    if (todo) {
+      todo.completed = !todo.completed;
+      this.update();
+    }
+  }
+
+  deleteTodo(id) {
+    this.state.todos = this.state.todos.filter((t) => t.id !== id);
+    this.update();
+  }
+
+  addTodo(text) {
+    const trimmed = text.trim();
+    if (trimmed) {
+      this.state.todos.push({ id: this.nextId++, text: trimmed, completed: false });
+      this.update();
+    }
+  }
+
+  bindEvents(container) {
+    container.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
+      checkbox.addEventListener("change", (e) => {
+        const id = parseInt(e.target.getAttribute("data-id"));
+        this.toggleTodo(id);
+      });
+    });
+
+    container.querySelectorAll("button[data-id]").forEach((button) => {
+      button.addEventListener("click", (e) => {
+        const id = parseInt(e.target.getAttribute("data-id"));
+        this.deleteTodo(id);
+      });
+    });
+
+    container.querySelector("#add-btn").addEventListener("click", () => {
+      const input = container.querySelector("#new-todo");
+      this.addTodo(input.value);
+      input.value = "";
+    });
   }
 
   renderTodoItem(todo) {
-    const checkboxAttributes = {
-      type: "checkbox",
-      "data-id": todo.id
-    };
-    
-    if (todo.completed) {
-      checkboxAttributes.checked = true;
-    }
-
     return createElement("li", {}, [
-      createElement("input", checkboxAttributes),
-      createElement("label", {}, todo.text),
-      createElement("button", { "data-id": todo.id }, "🗑️")
+      createElement("input", {
+        type: "checkbox",
+        "data-id": todo.id,
+        checked: todo.completed,
+      }),
+      createElement(
+        "label",
+        {
+          style: {
+            color: todo.completed ? "gray" : "black",
+            marginLeft: "5px",
+            marginRight: "10px",
+          },
+        },
+        todo.text
+      ),
+      createElement("button", { "data-id": todo.id }, "🗑️"),
     ]);
   }
 
   render() {
-    return createElement("div", { class: "todo-list" }, [
+    const container = createElement("div", { class: "todo-list" }, [
       createElement("h1", {}, "TODO List"),
       createElement("div", { class: "add-todo" }, [
         createElement("input", {
@@ -74,13 +138,20 @@ class TodoList extends Component {
         }),
         createElement("button", { id: "add-btn" }, "+"),
       ]),
-      createElement("ul", { id: "todos" }, 
-        this.state.todos.map(todo => this.renderTodoItem(todo))
+      createElement(
+        "ul",
+        { id: "todos" },
+        this.state.todos.map((todo) => this.renderTodoItem(todo))
       ),
     ]);
+
+    setTimeout(() => this.bindEvents(container), 0);
+    return container;
   }
 }
 
+
 document.addEventListener("DOMContentLoaded", () => {
-  document.body.appendChild(new TodoList().getDomNode());
+  const todoList = new TodoList();
+  document.body.appendChild(todoList.getDomNode());
 });
